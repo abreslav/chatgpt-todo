@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Foldable Block</title>
+    <style>
+        .foldable-content {
+            display: none;
+            margin-top: 10px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .toggle-heading {
+            cursor: pointer;
+        }
+        .indicator {
+            margin-right: 5px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="toggle-heading" onclick="toggleContent()">
+        
+        <h1><span id="indicator" class="indicator">⏵</span>Toggle Content</h1>
+	    <div id="foldable-content" class="foldable-content">
+	        <pre>This is the content inside the foldable block. Click the heading again to hide it.</pre>
+	    </div>
+    </div>
+
+    <script>
+        function toggleContent() {
+            const content = document.getElementById('foldable-content');
+            const indicator = document.getElementById('indicator');
+            if (content.style.display === 'none' || content.style.display === '') {
+                content.style.display = 'block';
+                indicator.textContent = '⏷';
+            } else {
+                content.style.display = 'none';
+                indicator.textContent = '⏵';
+            }
+        }
+    </script>
+</body>
+</html>

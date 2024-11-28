@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Editable To-Do List with Export</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 20px;
+    }
+    #todo-list {
+      list-style: none;
+      padding: 0;
+    }
+    #todo-list li {
+      margin: 5px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    #todo-list li.done .task-text {
+      text-decoration: line-through;
+      color: gray;
+    }
+    button {
+      margin-left: 10px;
+    }
+    input, button {
+      padding: 10px;
+      font-size: 16px;
+    }
+    #delete-all, #export {
+      margin-top: 20px;
+      margin-right: 10px;
+      background-color: red;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    #delete-all:hover {
+      background-color: darkred;
+    }
+    #export {
+      background-color: blue;
+    }
+    #export:hover {
+      background-color: darkblue;
+    }
+  </style>
+</head>
+<body>
+  <h1>Prompt</h1>
+  <pre>generate a simple todo list app 
+    to be run in the browser. 
+    each task can be either deleted or marked done. 
+    remember the tasks between page reloads. 
+    there's a "delete all" button that removes all data ever stored by the app. 
+    at first start, the task list must be empty. 
+    task text can be edited 
+    (pressing Cmd+Enter finishes editing).
+    tasks can be exported as a JSON file
+    (file name and folder are chosen in a standard dialog), 
+    fields to include: task text, done status, date added, date when marked done (if any)
+
+</pre>
+  <h1>To-Do List</h1>
+  <div>
+    <input type="text" id="task-input" placeholder="Enter a new task" />
+    <button id="add-task">Add Task</button>
+  </div>
+  <ul id="todo-list"></ul>
+  <button id="delete-all">Delete All</button>
+  <button id="export">Export as JSON</button>
+
+  <script>
+    const taskInput = document.getElementById('task-input');
+    const addTaskButton = document.getElementById('add-task');
+    const todoList = document.getElementById('todo-list');
+    const deleteAllButton = document.getElementById('delete-all');
+    const exportButton = document.getElementById('export');
+
+    // Load tasks from localStorage
+    function loadTasks() {
+      const tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+      tasks.forEach(task => {
+        addTaskToDOM(task.text, task.done, task.dateAdded, task.dateDone);
+      });
+    }
+
+    // Save tasks to localStorage
+    function saveTasks() {
+      const tasks = Array.from(todoList.children).map(item => ({
+        text: item.querySelector('.task-text').textContent,
+        done: item.classList.contains('done'),
+        dateAdded: item.getAttribute('data-date-added'),
+        dateDone: item.getAttribute('data-date-done') || null,
+      }));
+      localStorage.setItem('tasks', JSON.stringify(tasks));
+    }
+
+    // Add a task to the DOM
+    function addTaskToDOM(taskText, done = false, dateAdded = new Date().toISOString(), dateDone = null) {
+      const listItem = document.createElement('li');
+      listItem.setAttribute('data-date-added', dateAdded);
+      listItem.setAttribute('data-date-done', dateDone);
+
+      const taskSpan = document.createElement('span');
+      taskSpan.textContent = taskText;
+      taskSpan.className = 'task-text';
+      taskSpan.contentEditable = true;
+      taskSpan.addEventListener('keydown', (e) => {
+        if (e.metaKey && e.key === 'Enter') {
+          e.preventDefault();
+          taskSpan.blur();
+          saveTasks();
+        }
+      });
+
+      if (done) listItem.classList.add('done');
+
+      const doneButton = document.createElement('button');
+      doneButton.textContent = done ? 'Undo' : 'Done';
+      doneButton.addEventListener('click', () => {
+        const isDone = listItem.classList.toggle('done');
+        doneButton.textContent = isDone ? 'Undo' : 'Done';
+        listItem.setAttribute('data-date-done', isDone ? new Date().toISOString() : null);
+        saveTasks();
+      });
+
+      const deleteButton = document.createElement('button');
+      deleteButton.textContent = 'Delete';
+      deleteButton.addEventListener('click', () => {
+        todoList.removeChild(listItem);
+        saveTasks();
+      });
+
+      listItem.appendChild(taskSpan);
+      listItem.appendChild(doneButton);
+      listItem.appendChild(deleteButton);
+      todoList.appendChild(listItem);
+    }
+
+    // Export tasks as JSON
+    exportButton.addEventListener('click', async () => {
+      const tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+      const options = {
+        suggestedName: 'tasks.json',
+        types: [{
+          description: 'JSON Files',
+          accept: { 'application/json': ['.json'] }
+        }]
+      };
+
+      try {
+        const handle = await window.showSaveFilePicker(options);
+        const writable = await handle.createWritable();
+        await writable.write(new Blob([JSON.stringify(tasks, null, 2)], { type: 'application/json' }));
+        await writable.close();
+        alert('Tasks exported successfully!');
+      } catch (err) {
+        console.error('Export cancelled or failed:', err);
+      }
+    });
+
+    // Event listener for adding tasks
+    addTaskButton.addEventListener('click', () => {
+      const taskText = taskInput.value.trim();
+      if (taskText !== '') {
+        addTaskToDOM(taskText);
+        saveTasks();
+        taskInput.value = '';
+      } else {
+        alert('Task cannot be empty.');
+      }
+    });
+
+    // Add task on Enter key press
+    taskInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        addTaskButton.click();
+      }
+    });
+
+    // Event listener for "Delete All" button
+    deleteAllButton.addEventListener('click', () => {
+      if (confirm('Are you sure you want to delete all tasks?')) {
+        localStorage.clear();
+        todoList.innerHTML = '';
+      }
+    });
+
+    // Clear tasks from localStorage on first visit
+    if (!localStorage.getItem('initialized')) {
+      localStorage.setItem('tasks', JSON.stringify([]));
+      localStorage.setItem('initialized', 'true');
+    }
+
+    // Load tasks on page load
+    loadTasks();
+  </script>
+</body>
+</html>
