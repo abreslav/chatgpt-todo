@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Modern To-Do List</title>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      background-color: #f4f4f9;
+      color: #333;
+      margin: 0;
+      padding: 20px;
+      text-align: center;
+    }
+
+    h1 {
+      color: #5a5c85;
+      margin-bottom: 20px;
+    }
+
+    #task-input {
+      width: 70%;
+      padding: 10px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      margin-right: 10px;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    #add-task {
+      background-color: #6c63ff;
+      color: white;
+    }
+
+    #add-task:hover {
+      background-color: #5750d6;
+    }
+
+    #delete-all, #export {
+      background-color: #ff6b6b;
+      color: white;
+      margin-top: 20px;
+    }
+
+    #delete-all:hover, #export:hover {
+      background-color: #d55a5a;
+    }
+
+    #export {
+      background-color: #4caf50;
+    }
+
+    #export:hover {
+      background-color: #3d9140;
+    }
+
+    #todo-list {
+      list-style: none;
+      padding: 0;
+      max-width: 600px;
+      margin: 20px auto 0;
+      background-color: white;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    #todo-list li {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 15px;
+      border-bottom: 1px solid #eee;
+    }
+
+    #todo-list li:last-child {
+      border-bottom: none;
+    }
+
+    #todo-list li.done .task-text {
+      text-decoration: line-through;
+      color: #aaa;
+    }
+
+    #todo-list li .checkbox {
+      margin-right: 10px;
+      transform: scale(1.2);
+    }
+
+    #todo-list li .task-text {
+      flex: 1;
+      text-align: left;
+      font-size: 16px;
+      word-wrap: break-word;
+    }
+
+    #todo-list li .delete {
+      cursor: pointer;
+      font-size: 1.2rem;
+      color: #ff6b6b;
+      transition: color 0.2s ease;
+    }
+
+    #todo-list li .delete:hover {
+      color: #d55a5a;
+    }
+
+    footer {
+      margin-top: 30px;
+      font-size: 14px;
+      color: #777;
+    }
+  </style>
+</head>
+<body>
+  <h1>Modern To-Do List</h1>
+  <div>
+    <input type="text" id="task-input" placeholder="Enter a new task" />
+    <button id="add-task">Add Task</button>
+  </div>
+  <ul id="todo-list"></ul>
+  <button id="delete-all">Delete All</button>
+  <button id="export">Export as JSON</button>
+  <footer>
+    <p>Built with 💜 for productivity!</p>
+  </footer>
+
+  <script>
+    const taskInput = document.getElementById('task-input');
+    const addTaskButton = document.getElementById('add-task');
+    const todoList = document.getElementById('todo-list');
+    const deleteAllButton = document.getElementById('delete-all');
+    const exportButton = document.getElementById('export');
+
+    // Load tasks from localStorage
+    function loadTasks() {
+      const tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+      tasks.forEach(task => {
+        addTaskToDOM(task.text, task.done, task.dateAdded, task.dateDone);
+      });
+    }
+
+    // Save tasks to localStorage
+    function saveTasks() {
+      const tasks = Array.from(todoList.children).map(item => ({
+        text: item.querySelector('.task-text').textContent,
+        done: item.classList.contains('done'),
+        dateAdded: item.getAttribute('data-date-added'),
+        dateDone: item.getAttribute('data-date-done') || null,
+      }));
+      localStorage.setItem('tasks', JSON.stringify(tasks));
+    }
+
+    // Add a task to the DOM
+    function addTaskToDOM(taskText, done = false, dateAdded = new Date().toISOString(), dateDone = null) {
+      const listItem = document.createElement('li');
+      listItem.setAttribute('data-date-added', dateAdded);
+      listItem.setAttribute('data-date-done', dateDone);
+
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.className = 'checkbox';
+      checkbox.checked = done;
+      checkbox.addEventListener('change', () => {
+        listItem.classList.toggle('done');
+        listItem.setAttribute('data-date-done', checkbox.checked ? new Date().toISOString() : null);
+        saveTasks();
+      });
+
+      const taskSpan = document.createElement('span');
+      taskSpan.textContent = taskText;
+      taskSpan.className = 'task-text';
+      taskSpan.contentEditable = true;
+      taskSpan.addEventListener('keydown', (e) => {
+        if (e.metaKey && e.key === 'Enter') {
+          e.preventDefault();
+          taskSpan.blur();
+          saveTasks();
+        }
+      });
+
+      if (done) listItem.classList.add('done');
+
+      const deleteIcon = document.createElement('span');
+      deleteIcon.textContent = '🗑️';
+      deleteIcon.className = 'delete';
+      deleteIcon.addEventListener('click', () => {
+        todoList.removeChild(listItem);
+        saveTasks();
+      });
+
+      listItem.appendChild(checkbox);
+      listItem.appendChild(taskSpan);
+      listItem.appendChild(deleteIcon);
+      todoList.appendChild(listItem);
+    }
+
+    // Export tasks as JSON
+    exportButton.addEventListener('click', async () => {
+      const tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+      const options = {
+        suggestedName: 'tasks.json',
+        types: [{
+          description: 'JSON Files',
+          accept: { 'application/json': ['.json'] }
+        }]
+      };
+
+      try {
+        const handle = await window.showSaveFilePicker(options);
+        const writable = await handle.createWritable();
+        await writable.write(new Blob([JSON.stringify(tasks, null, 2)], { type: 'application/json' }));
+        await writable.close();
+        alert('Tasks exported successfully!');
+      } catch (err) {
+        console.error('Export cancelled or failed:', err);
+      }
+    });
+
+    // Event listener for adding tasks
+    addTaskButton.addEventListener('click', () => {
+      const taskText = taskInput.value.trim();
+      if (taskText !== '') {
+        addTaskToDOM(taskText);
+        saveTasks();
+        taskInput.value = '';
+      } else {
+        alert('Task cannot be empty.');
+      }
+    });
+
+    // Add task on Enter key press
+    taskInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        addTaskButton.click();
+      }
+    });
+
+    // Event listener for "Delete All" button
+    deleteAllButton.addEventListener('click', () => {
+      if (confirm('Are you sure you want to delete all tasks?')) {
+        localStorage.setItem('tasks', JSON.stringify([]));
+        todoList.innerHTML = '';
+      }
+    });
+
+    // Clear tasks from localStorage on first visit
+    if (!localStorage.getItem('initialized')) {
+      localStorage.setItem('tasks', JSON.stringify([]));
+      localStorage.setItem('initialized', 'true');
+    }
+
+    // Load tasks on page load
+    loadTasks();
+  </script>
+</body>
+</html>
